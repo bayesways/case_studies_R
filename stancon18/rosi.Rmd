@@ -135,7 +135,7 @@ In the model above the vector $\mu=(\mu_{1},\dots,\mu_K)$ represents quantities 
 
 # Stan Code
 
-For this case study we use the Bernoulli likelihood for the binary data with a logit link function and allow for a measurement error for the continuous variables. We also assume that all latent variables have unit variance. The Stan program encoding this model is the following: 
+For this case study we use the Bernoulli likelihood for the binary data with a logit link function. The Stan program encoding this model is the following: 
 
 ```{r eval=FALSE}
 data{
@@ -193,14 +193,14 @@ mu_c<- runif(Kc, -5,5)
 mu_b<- runif(Kb, -1,1)
 mu<-c(mu_b,mu_c)
 
-noise <- c(2, 3)
+sigma <- c(2, 3)
 zb <- matrix(0, nrow = N, ncol = Kb)
 for(n in 1:N){
   zb[n,] <- z[n,1:Kb] + mu_b
 }
 zc <- matrix(0, nrow = N, ncol = Kc)
 for(n in 1:N){
-  zc[n,] <- z[n,(Kb+1):K] * noise + mu_c
+  zc[n,] <- z[n,(Kb+1):K] * sigma + mu_c
 }
 p <- plogis(zb)
 yb = sapply(1:N, function(n) rbinom(size=1, Kb,  prob = p[n,]))
@@ -254,7 +254,7 @@ mcmc_recover_hist(
 )
 mcmc_recover_hist(
   as.matrix(fit, pars = c("sigma")),
-  true = noise,
+  true = sigma,
   facet_args = list(ncol = 2)
 )
 
