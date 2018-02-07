@@ -63,7 +63,7 @@ In this study, we address these issues by building a Bayesian model to do a full
 
 
 ## How to model the dependence between discrete and continuous observations? 
-It is common in clinical trials to collect "Yes/No" data. We want to fully model this process of interrelated dependencies, incorporate the dependence between the different measurements for each person, and account for uncertainty. Furthemore, datapoints collected in clinical trials are routinely of mixed type: binary, continuous, counts, etc. The main purpose of this work is to extend the current framework so that it can incorporate interdependencies between different features, both discrete and continuous. 
+It is common in clinical trials to collect "Yes/No" data. We want to fully model this process of interrelated dependencies, incorporate the dependence between the different measurements for each person, and account for uncertainty. Furthermore, datapoints collected in clinical trials are routinely of mixed type: binary, continuous, counts, etc. The main purpose of this work is to extend the current framework so that it can incorporate interdependencies between different features, both discrete and continuous. 
 
 Our data is organized with one subject per row and one effect per column. For example, if our clinical trial dataset records 3 effects per subject, 'Nausea' (yes/no), 'Dyspepsia' (yes/no) and 'Haemoglobin Levels' (continuous), the dataset would look like this:
 
@@ -140,81 +140,94 @@ For this case study we use the Bernoulli likelihood for the binary data with a l
 ```{r eval=FALSE}
 data{
  int<lower=0> N;
+ int<lower=0> K;
  int<lower=0> Kb;
  int<lower=0> Kc;
  int<lower=0, upper=1> yb[N,Kb];
- real yc[N,Kc];
+ vector[Kc] yc[N];
 }
 
-transformed data{
-  int<lower=1> K = Kb + Kc;
+transformed data {
+  matrix[Kc, Kc] I = diag_matrix(rep_vector(1, Kc));
 }
 parameters {
-  vector[Kb] mu_b;
-  vector[Kc] mu_c;
-  
-  cholesky_factor_corr[K] L_R;
-  matrix[N, K] Z_raw;
+  vector[Kb] zb[N];
+  cholesky_factor_corr[K] L_R;  // first continuous, then binary
   vector<lower=0>[Kc] sigma;
+  vector[K] mu;
+}
+
+transformed parameters{
+  matrix[N, Kb] z;
+  vector[Kc] mu_c = head(mu, Kc);
+  vector[Kb] mu_b = tail(mu, Kb);
+  {
+    matrix[Kc, Kc] L_inv = mdivide_left_tri_low(diag_pre_multiply(sigma, L_R[1:Kc, 1:Kc]), I);
+    for (n in 1:N){
+      vector[Kc] resid = L_inv * (yc[n] - mu_c);
+      z[n,] = transpose(mu_b + tail(L_R * append_row(resid, zb[n]), Kb));
+    }
+  }
 }
 
 model{
-  matrix[N,K] Z = Z_raw * transpose(L_R);
-  mu_b ~ normal(0,1);
-  mu_c ~ normal(0,10);
-  sigma ~ normal(0, 5);
-  L_R ~ lkj_corr_cholesky(1);
-  to_vector(Z_raw) ~ normal(0,1);
-  for (k in 1:Kb) yb[,k] ~ bernoulli_logit(mu_b[k] + Z[,k]);
-  for (k in 1:Kc) yc[,k] ~ normal(mu_c[k] + Z[,k + Kb], sigma[k]);
+  mu ~ normal(0,10);
+  L_R ~ lkj_corr_cholesky(2);
+  sigma~cauchy(0,2.5);
+  yc ~ multi_normal_cholesky(mu_c, diag_pre_multiply(sigma, L_R[1:Kc, 1:Kc]));
+  for (n in 1:N) zb[n] ~ normal(0,1);
+  for (k in 1:Kb) yb[,k] ~ bernoulli_logit(z[,k]);
+
 }
 
 generated quantities{
-  corr_matrix[K] R = multiply_lower_tri_self_transpose(L_R);
+  matrix[K,K] R = multiply_lower_tri_self_transpose(L_R);
 }
 ```
 
 We will fit the model with synthetic data that we generate as follows: 
 ```{r}
-set.seed(68232134)
-N <-400
-Kb <-4
-Kc<-2
-K<- Kb+Kc
+set.seed(6823234)
+N <-300
+Kb <- 4
+Kc <- 2
+K <-Kb+Kc
 
 # correlation matrix
 A <- matrix(runif(K^2,2,10)-K/2, ncol=K) 
 R<- cov2cor(t(A)%*% A )
 
-z <- mvrnorm(n = N, rep(0,K), R) # latent continuous variables
+# standard deviations
+sigma<- runif(Kc, 0, 2)
+Dval<-c(sigma,rep(1,Kb)) 
+D<-diag(Dval)
+
+Sigma <- D %*% R %*% D # covariance matrix
 
 # mean vector
 mu_c<- runif(Kc, -5,5)
 mu_b<- runif(Kb, -1,1)
-mu<-c(mu_b,mu_c)
+mu<-c(mu_c,mu_b)
 
-sigma <- c(2, 3)
-zb <- matrix(0, nrow = N, ncol = Kb)
-for(n in 1:N){
-  zb[n,] <- z[n,1:Kb] + mu_b
-}
-zc <- matrix(0, nrow = N, ncol = Kc)
-for(n in 1:N){
-  zc[n,] <- z[n,(Kb+1):K] * sigma + mu_c
-}
-p <- plogis(zb)
-yb = sapply(1:N, function(n) rbinom(size=1, Kb,  prob = p[n,]))
+z <- mvrnorm(n = N, mu, Sigma) # latent continuous variables
+
+# binary variable effects
+p <- plogis( z[,(1+Kc):K])
+yb <- sapply(1:N, function(n) rbinom(size=1, Kb,  prob = p[n,]))
 yb<- t(yb)
-yc <- zc
+dim(yb)<-c(N,Kb)
+
+yc <- z[,1:Kc] # continuous variable effects
+dim(yc)<-c(N,Kc)
 ```
 
 We fit the model with the following code.
 
-```{r eval=TRUE, message=FALSE, cache=TRUE}
+```{r eval=FALSE, message=FALSE, cache=TRUE}
 fit <- stan(file='./corr_model.stan',
             data=list(N = N, K = K, Kb = Kb, Kc = Kc, yb = yb, yc = yc),
-            control = list('adapt_delta' = 0.98 , 'max_treedepth' = 10),
-            iter=200,
+            control = list('adapt_delta' = 0.9, 'max_treedepth' = 10),
+            iter=1000,
             chains = 4,
             seed=4938483)
 ```
@@ -227,9 +240,9 @@ fit <- readRDS("./fit.rds")
 ## Model Diagnostics
 We first check the fit of the 5 crucial parameters of interest.
 ```{r}
-print(fit, pars=c('mu_b', 'mu_c', 'R', 'sigma'))
+print(fit, pars=c('mu', 'R', 'sigma'))
 ```
-We see that max `Rhat` values are good, below 1.01. The effective sample size `n_eff` is a little lower for a few parameters but sufficient to allow us to proceed to check the rest of the diagnostics which are clean.
+We see that max `Rhat` values are good, below 1.01. The effective sample size `n_eff` is good and the rest of the diagnostics are clean.
 
 ```{r}
 check_treedepth(fit)
@@ -260,7 +273,7 @@ mcmc_recover_hist(
 
 ```
 
-```{r fig.height = 5, message=FALSE, warning=FALSE}
+```{r fig.height = 5, fig.width=10, message=FALSE, warning=FALSE}
 R_to_print = vector(mode="character", length=(K^2-K)/2)
 true_R_to_print = vector(mode="double", length=(K^2-K)/2)
 k<-1
@@ -281,11 +294,6 @@ mcmc_recover_hist(
 )
 
 ```
-
-## Unresolved Issues 
-
- 1. We observe that the interval coverage for the variances of the continuous outcomes underestimates the true values. 
- 2. The correlation of the two continuous variables is overestimated. 
 
 
 # Application 
@@ -334,7 +342,7 @@ get_scores_perrow <- function(x){
 }
 ```
 
- For example, the measurement vector (0.2,.5,.7,.8,−3,−1.8)  gets a preference score of (80,50,30,20,53.3,39.3). The best possible measurement would correspond necessarily to a preference score of (100,100,100,100,100), while the worst measurement would correspond to (0,0,0,0,0). 
+For example, the measurement vector (.3,0.17, .1, .14, -1.1,-2)  gets a preference score of (20, 53.3, 100, 6.7,  45.6,  42.2). The best possible measurement would correspond necessarily to a preference score of (100,100,100,100,100), while the worst measurement would correspond to (0,0,0,0,0). 
 ```{r}
 x = c(.3,0.17, .1, .14, -1.1,-2)
 get_scores_perrow(x)
@@ -379,13 +387,13 @@ final_score <- function(fit){
 
 We can evaluate the above function for each group separately. The value we are interested in is the difference of the final score between the treatment and the control group. We have pre-fit our models to the two groups and saved the posterior samples. We load the samples and compute the values of interest as follows:
 
-```{r fig.height = 5}
-final_score_C <- final_score(readRDS("./fit_control.rds"))
-final_score_T <- final_score(readRDS("./fit_treat.rds"))
-t_hist <- hist(final_score_C, plot=FALSE, breaks =55)
+```{r fig.height = 5, fig.width=12}
+final_score_C <- final_score(readRDS("./syn_fit_control.rds"))
+final_score_T <- final_score(readRDS("./syn_fit_treat.rds"))
+t_hist <- hist(final_score_C, plot=FALSE, breaks =40)
 plot(t_hist, col = alpha('blue', 0.5), main="Final Score for Treatment and Control",
-     xlab="Final Score", yaxt='n', ann=TRUE, xlim=c(-4000,14000), ylim=c(0,500))
-t_hist2 <- hist(final_score_T, plot=FALSE, breaks=50)
+     xlab="Final Score", yaxt='n', ann=TRUE, xlim=c(-12000,12000), ylim=c(0,200))
+t_hist2 <- hist(final_score_T, plot=FALSE, breaks=40)
 plot(t_hist2, col=alpha('orange', 0.6), main="Final Score of Treatment and Control",
      xlab="", yaxt='n', ann=TRUE, add=TRUE)
 legend("topright", legend=c("Control Group", "Treatment Group"),
@@ -393,7 +401,13 @@ legend("topright", legend=c("Control Group", "Treatment Group"),
  
  
 ```
- 
+We see that the distribution of the score under the treatment for a new patient is higher without the treatment. Using these posterior samples we can estimate the probability of the treatment score being higher than the control as follows
+```{r}
+diff <- final_score_T - final_score_C
+length(diff[diff>0])/length(diff) # estimate of P(Score(Treatment) > Score(Control))
+```
+We observe that under this model, the final score is above 0 with probability 70% for a new patient. We can also make a plot of the difference to visualize the final result. 
+
 ```{r fig.height=3}
 t_hist <- hist(final_score_T - final_score_C, plot=FALSE, breaks=50)
 plot(t_hist, col=alpha('purple', 0.3), main="Final Score of Treatment - Control",
@@ -402,24 +416,15 @@ abline(v = 0, col="black", lwd=3, lty=1)
 
 ```
  
-We observe that under this model, the final score is above 0 with probability 62% for a new patient. 
-```{r}
-diff <- final_score_T - final_score_C
-length(diff[diff>0])/length(diff) # estimate of P(Score(Treatment) > Score(Control))
-```
-
 
 ### Discussion - Future Work
 
-One natural question is how sensitive is the final result to the choice of preference score functions. The preference scores could in principle have any form. In this study we chose linear mappings because they are easy to interpret and to work with. @philips15 looked at non-linear preference functions, guided by clinical experts who suggested that “desirability” of some effects is better modeled with sigmoid-like functions. Their study found “that model results are very robust to imprecision and disagreements about weights. Even non-linear value functions on the most discriminating effects did not tip this balance [sign of score difference between treatment and control]”.
+One natural question is how sensitive is the final result to the choice of preference score functions. The preference scores could in principle have any form. In this study we chose linear mappings because they are easy to interpret and to work with. @phillips15 looked at non-linear preference functions, guided by clinical experts who suggested that “desirability” of some effects is better modeled with sigmoid-like functions. Their study found “that model results are very robust to imprecision and disagreements about weights. Even non-linear value functions on the most discriminating effects did not tip this balance [sign of score difference between treatment and control]”.
 
-Another source of variability we examined is the choice of clinical weights. We ran the following experiment and conclude that the final probability is relatively stable to changes of the weights. We ran 100 simulations of calculating the final probability of the treatment score being higher than the control, with each iteration receiving weights that were randomly perturbed by 10%. The mean of the experiments was 0.585, well within 10% of the the original result which was 0.625. The standard deviation of the simulation results was 0.006. 
-
-In our approach we fit two separate models to the two groups using common priors. An interesting alternative approach, left as future work, is to fit a hierarchical model to both groups simultaneously. Under this scenario, group-specific parameters would be pooled towards the global parameters which will also be estimated from the data. Yet another approach is to run inference for each group separately but use posterior samples from the control group to inform the priors for the treatment group. It would be interesting to assess the effects of these modeling choices to the final outcome. 
-
+Another source of variability we examined is the choice of clinical weights. Based on preliminary experimentation we conclude that the final probability seems relatively stable to changes of the weights. When we pertrube the weights by 10% we observed a difference in the final score distribution that was close to 5%.
 
 __Acknowledgments__   
-The author would like to thank Jonah Gabry, Ben Goodrich and Bob Carpenter of the Stan team for their feedback and help during the process of writing this report. 
+The author would like to thank Jonah Gabry, Bob Carpenter, Andrew Gelman, and Ben Goodrich (who practically wrote the stan code) for their feedback and help during the process of writing this report. 
 
 
 __License__  
