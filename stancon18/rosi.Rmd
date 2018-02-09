@@ -1,5 +1,5 @@
 ---
-title: "Assesing the Safety of Rosiglitazone for the Treatment of Type II Diabetes"
+title: "Assessing the Safety of Rosiglitazone for the Treatment of Type II Diabetes"
 author:
 - "K. Vamvourellis (London School of Economics)"
 - "Joint work with K. Kalogeropoulos and L. Phillips"
@@ -308,7 +308,7 @@ In order to meaningfully compare the various effects, such as glucose levels, we
 For example, one of effect for the assessment of Rosiglitazone is "Nausea". For step one, we need to start from a reasonable expected range for this effect in any given trial, let's say the percentage of subjects experiencing "Nausea" ranges from 0 to 10 in percentage units (\%). The "preference score"  is essentially a map from [0,10] onto [0,100] such that 0 corresponds to the least desirable measurement, 10 \%,  and 100 the most desirable one, 0\%. With the two extremes fixed, the map can take any form in between. In this study will use linear maps for simplicity. Each effect gets it's own "preference score" map from its own range to [0,100]. This way we can track, on a common scale, how  _clinically desirable_ each observation is. In step two, each effect is given a weight $w_j$ that corresponds to the importance of moving from "preference score" 0 to 100. Finally, we need to normalize the weights to ensure they sum to 1.
 
 
-## How to approve a drug?
+## How to score a drug?
 With this scoring system we can estimate the effect of a drug on a new patient. For a given measurement we simply take a weighted sum of the "preference scores". Specifically for the $j$-th effect, let's assume that $c_j(\cdot)$ is the "preference score" map. Also let $y_j^{(T)}$ be the measurement in the treatment group and $y_j^{(C)}$ be the corresponding measurement in the control group. We then get a final score of $$s = \sum_j w_j \cdot \big( c_j \big(y_j^{(T)}\big) - c_j \big(y_j^{(C)}\big) \big) $$
 Thus we can decided if the treatment is beneficial (when the sum is positive), or not (the sum is negative). 
 
