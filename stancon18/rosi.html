@@ -361,7 +361,7 @@ dim(yc)&lt;-c(N,Kc)</code></pre>
             iter=1000,
             chains = 4,
             seed=4938483)</code></pre>
-<p>It’s good practice to save the data and posterior samples of the model fit to it. In our case, we want to save the data and the posterior samples for an extra reason. Later on, we will need to demonstrate how to fit the model on the real datasets. For the purposes of this notebook, we will re-use this data as if it was real. The choice for the name “control” will become clearer later. We can save the data and the samples as follows</p>
+<p>It’s good practice to save the data and posterior samples of the model fit to it. In our case, we will need it again when we demonstrate how to fit the model on the real datasets. For the purposes of this notebook, we will re-use this data in place of the hypothetical control group dataset. We can save the data and the samples as follows</p>
 <pre class="r"><code>stan_rdump(c(&quot;N&quot;, &quot;Kb&quot;,&quot;Kc&quot; , &quot;K&quot; , &quot;yb&quot; , &quot;yc&quot;), file=&quot;control.data.R&quot;)
 saveRDS(fit, &quot;fit_control.rds&quot; )</code></pre>
 <p>Can load the samples as follows</p>

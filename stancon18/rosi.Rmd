@@ -233,8 +233,7 @@ fit <- stan(file='./modelcode.stan',
 ```
 
 It's good practice to save the data and posterior samples of the model fit to it. 
-In our case, we want to save the data and the posterior samples for an extra reason. 
-Later on, we will need to demonstrate how to fit the model on the real datasets. For the purposes of this notebook, we will re-use this data as if it was real. The choice for the name "control" will become clearer later. We can save the data and the samples as follows
+In our case, we will need it again when we demonstrate how to fit the model on the real datasets. For the purposes of this notebook, we will re-use this data in place of the hypothetical control group dataset. We can save the data and the samples as follows
 ```{r eval=TRUE}
 stan_rdump(c("N", "Kb","Kc" , "K" , "yb" , "yc"), file="control.data.R")
 saveRDS(fit, "fit_control.rds" )
