@@ -65,15 +65,15 @@ In this study, we address these issues by building a Bayesian model to do a full
 ## How to model the dependence between discrete and continuous observations?
 It is common in clinical trials to collect "Yes/No" data. We want to fully model this process of interrelated dependencies, incorporate the dependence between the different measurements for each person, and account for uncertainty. Furthermore, datapoints collected in clinical trials are routinely of mixed type: binary, continuous, counts, etc. The main purpose of this work is to extend the current framework so that it can incorporate interdependencies between different features, both discrete and continuous.
 
-Our data is organized with one subject per row and one effect per column. For example, if our clinical trial dataset records 3 effects per subject, 'Nausea' (yes/no), 'Dyspepsia' (yes/no) and 'Haemoglobin Levels' (continuous), the dataset would look like this:
+Our data is organized with one subject per row and one effect per column. For example, if our clinical trial dataset records 3 effects per subject, 'Haemoglobin Levels' (continuous), 'Nausea' (yes/no) and 'Dyspepsia' (yes/no) the dataset would look like this:
 
-|Subject ID| Group Type| Nausea | Dyspepsia | Hemoglobin Level|
+|Subject ID| Group Type|Hemoglobin Level  | Dyspepsia |Nausea |
 |--------- | --------- | -------- | ---------|---------|
-|123 | Control | 0 | 1 | 3.42|
-|213 | Treatment | 0 | 1 | 4.41|
-|431 | Control  | 0 | 0 | 1.12|
-|224 | Control  | 0 | 1 | -0.11|
-|224 | Treatment  | 1 | 1 | 2.42|
+|123 | Control    | 3.42  | 1 |0 |
+|213 | Treatment  | 4.41  | 1 |0 |
+|431 | Control    | 1.12  | 0 |0 |
+|224 | Control    | -0.11 | 1 |0 |
+|224 | Treatment  | 2.42  | 1 |1 |
 
 To model the effects of a drug we need a generative model for these 3 effects that also allows for dependencies between these effects. It stands to reason that the probability of a subject experiencing Nausea is not independent of the probability of experiencing Dyspepsia. To that end, we adopt a parametric generative model to learn the covariance matrix directly.
 
@@ -326,7 +326,7 @@ Since there is noise in the data, the final score is noisy too. With the Bayesia
 
 ## A worked out example
 
-Here we will present a full example starting from the observational data to the final score. In this example we assess the safety of Rosiglitazone drug for type II diabetes by comparing the distribution of the final score for the treatment group (152 subjects) and the control group (150 subjects). The first four columns record four different events, Diarrhea, Nausea/Vomiting, Dyspepsia and Edema respectively. The last two columns capture Hemoglobin and Glucose levels respectively, as deviations from the baseline recorded when the subjects entered treatment. According to clinical judgment we we will assume that the clinical weights are (8.9,17.8,1.8,0.6,59.2,11.8).  This means that, to take the first two effects for example, a full swing from the least desirable observation to the most desirable one is judged to be $\frac{8.9}{1.8}$ more important for the first effect than for the second. The following two functions allow us to calculate the preference scores for a vector of measurements for these 6 effects. Note that for the binary data we consider the underlying probability of observing the effect.
+Here we will present a full example starting from the observational data to the final score. In this example we assess the safety of Rosiglitazone drug for type II diabetes by comparing the distribution of the final score for the treatment group (152 subjects) and the control group (150 subjects). The first two columns capture Hemoglobin and Glucose levels respectively, as deviations from the baseline recorded when the subjects entered treatment. The last four columns record four different events, Diarrhea, Nausea/Vomiting, Dyspepsia and Edema respectively.  According to clinical judgment we we will assume that the clinical weights are (59.2,11.8, 8.9,17.8,1.8,0.6).  This means that, to take the first two effects for example, a full swing from the least desirable observation to the most desirable one is judged to be $\frac{59.2}{11.8}$ more important for the first effect than for the second. The following two functions allow us to calculate the preference scores for a vector of measurements for these 6 effects. Note that for the binary data we consider the underlying probability of observing the effect.
 ```{r}
 ## Map from effect range to [0,100]
 pref_score <- function(x, m1, m2, sign){

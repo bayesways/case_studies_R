@@ -120,7 +120,7 @@ $(document).ready(function () {
 <h1 class="title toc-ignore">Assessing the Safety of Rosiglitazone for the Treatment of Type II Diabetes</h1>
 <h4 class="author"><em>K. Vamvourellis (London School of Economics)</em></h4>
 <h4 class="author"><em>Joint work with K. Kalogeropoulos and L. Phillips</em></h4>
-<h4 class="date"><em>02/12/18 February, 2018</em></h4>
+<h4 class="date"><em>02/13/18 February, 2018</em></h4>
 
 </div>
 
@@ -182,52 +182,52 @@ color_scheme_set('red')</code></pre>
 <div id="how-to-model-the-dependence-between-discrete-and-continuous-observations" class="section level2">
 <h2><span class="header-section-number">2.2</span> How to model the dependence between discrete and continuous observations?</h2>
 <p>It is common in clinical trials to collect “Yes/No” data. We want to fully model this process of interrelated dependencies, incorporate the dependence between the different measurements for each person, and account for uncertainty. Furthermore, datapoints collected in clinical trials are routinely of mixed type: binary, continuous, counts, etc. The main purpose of this work is to extend the current framework so that it can incorporate interdependencies between different features, both discrete and continuous.</p>
-<p>Our data is organized with one subject per row and one effect per column. For example, if our clinical trial dataset records 3 effects per subject, ‘Nausea’ (yes/no), ‘Dyspepsia’ (yes/no) and ‘Haemoglobin Levels’ (continuous), the dataset would look like this:</p>
+<p>Our data is organized with one subject per row and one effect per column. For example, if our clinical trial dataset records 3 effects per subject, ‘Haemoglobin Levels’ (continuous), ‘Nausea’ (yes/no) and ‘Dyspepsia’ (yes/no) the dataset would look like this:</p>
 <table>
 <thead>
 <tr class="header">
 <th>Subject ID</th>
 <th>Group Type</th>
-<th>Nausea</th>
-<th>Dyspepsia</th>
 <th>Hemoglobin Level</th>
+<th>Dyspepsia</th>
+<th>Nausea</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td>123</td>
 <td>Control</td>
-<td>0</td>
-<td>1</td>
 <td>3.42</td>
+<td>1</td>
+<td>0</td>
 </tr>
 <tr class="even">
 <td>213</td>
 <td>Treatment</td>
-<td>0</td>
-<td>1</td>
 <td>4.41</td>
+<td>1</td>
+<td>0</td>
 </tr>
 <tr class="odd">
 <td>431</td>
 <td>Control</td>
-<td>0</td>
-<td>0</td>
 <td>1.12</td>
+<td>0</td>
+<td>0</td>
 </tr>
 <tr class="even">
 <td>224</td>
 <td>Control</td>
-<td>0</td>
-<td>1</td>
 <td>-0.11</td>
+<td>1</td>
+<td>0</td>
 </tr>
 <tr class="odd">
 <td>224</td>
 <td>Treatment</td>
-<td>1</td>
-<td>1</td>
 <td>2.42</td>
+<td>1</td>
+<td>1</td>
 </tr>
 </tbody>
 </table>
@@ -486,7 +486,7 @@ mcmc_recover_hist(
 </div>
 <div id="a-worked-out-example" class="section level2">
 <h2><span class="header-section-number">5.3</span> A worked out example</h2>
-<p>Here we will present a full example starting from the observational data to the final score. In this example we assess the safety of Rosiglitazone drug for type II diabetes by comparing the distribution of the final score for the treatment group (152 subjects) and the control group (150 subjects). The first four columns record four different events, Diarrhea, Nausea/Vomiting, Dyspepsia and Edema respectively. The last two columns capture Hemoglobin and Glucose levels respectively, as deviations from the baseline recorded when the subjects entered treatment. According to clinical judgment we we will assume that the clinical weights are (8.9,17.8,1.8,0.6,59.2,11.8). This means that, to take the first two effects for example, a full swing from the least desirable observation to the most desirable one is judged to be <span class="math inline">\(\frac{8.9}{1.8}\)</span> more important for the first effect than for the second. The following two functions allow us to calculate the preference scores for a vector of measurements for these 6 effects. Note that for the binary data we consider the underlying probability of observing the effect.</p>
+<p>Here we will present a full example starting from the observational data to the final score. In this example we assess the safety of Rosiglitazone drug for type II diabetes by comparing the distribution of the final score for the treatment group (152 subjects) and the control group (150 subjects). The first two columns capture Hemoglobin and Glucose levels respectively, as deviations from the baseline recorded when the subjects entered treatment. The last four columns record four different events, Diarrhea, Nausea/Vomiting, Dyspepsia and Edema respectively. According to clinical judgment we we will assume that the clinical weights are (59.2,11.8, 8.9,17.8,1.8,0.6). This means that, to take the first two effects for example, a full swing from the least desirable observation to the most desirable one is judged to be <span class="math inline">\(\frac{59.2}{11.8}\)</span> more important for the first effect than for the second. The following two functions allow us to calculate the preference scores for a vector of measurements for these 6 effects. Note that for the binary data we consider the underlying probability of observing the effect.</p>
 <pre class="r"><code>## Map from effect range to [0,100]
 pref_score &lt;- function(x, m1, m2, sign){
   m &lt;- 100 / (m2-m1)
