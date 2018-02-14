@@ -65,7 +65,7 @@ In this study, we address these issues by building a Bayesian model to do a full
 ## How to model the dependence between discrete and continuous observations?
 It is common in clinical trials to collect "Yes/No" data. We want to fully model this process of interrelated dependencies, incorporate the dependence between the different measurements for each person, and account for uncertainty. Furthermore, datapoints collected in clinical trials are routinely of mixed type: binary, continuous, counts, etc. The main purpose of this work is to extend the current framework so that it can incorporate interdependencies between different features, both discrete and continuous.
 
-Our data is organized with one subject per row and one effect per column. For example, if our clinical trial dataset records 3 effects per subject, 'Haemoglobin Levels' (continuous), 'Nausea' (yes/no) and 'Dyspepsia' (yes/no) the dataset would look like this:
+Our data is organized with one subject per row and one effect per column. For example, if our clinical trial dataset records 3 effects per subject, 'Hemoglobin Levels' (continuous), 'Nausea' (yes/no) and 'Dyspepsia' (yes/no) the dataset would look like this:
 
 |Subject ID| Group Type|Hemoglobin Level  | Dyspepsia |Nausea |
 |--------- | --------- | -------- | ---------|---------|
